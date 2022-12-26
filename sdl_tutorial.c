@@ -619,8 +619,8 @@ void screen(void)
   clear_screen();
   draw_text(collision_count, 100, 100);
   draw_text(player_lives_count, 100, 125);
-  draw_player();
   draw_bullets();
+  draw_player();
   draw_asteroids();
   detect_collisions();
   render();
