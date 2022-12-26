@@ -78,8 +78,8 @@ App app;
 void init_bullet(void)
 {
   struct Bullet bullet;
-  bullet.w = 25;
-  bullet.h = 25;
+  bullet.w = 32;
+  bullet.h = 32;
   bullet.y = app.player->y;
   bullet.x = app.player->x;
   bullet.texture = bullet_texture;
@@ -105,9 +105,9 @@ void init_bullet(void)
 void init_player(void)
 {
   static struct Player player;
-  player.frame_w = 162;
+  player.frame_w = 123;
   player.frame_w_offset = 0;
-  player.frame_h = 64;
+  player.frame_h = 50;
 
   player.w = player.frame_w / 3;
   player.h = player.frame_h;
@@ -126,8 +126,8 @@ void maybe_gen_ast(void)
   struct Asteroid *ast = malloc(sizeof(struct Asteroid));
   ast->y = -10;
   ast->x = rand() % SCREEN_WIDTH;
-  ast->h = 25;
-  ast->w = 25;
+  ast->h = 64;
+  ast->w = 64;
   ast->texture = ast_texture;
 
   if (app.ast_index >= MAX_ASTEROIDS && app.asteroids[app.ast_index - 1].y > SCREEN_HEIGHT)
@@ -269,25 +269,11 @@ void clear_screen(void)
 
 void draw(SDL_Texture *texture, SDL_Rect *dest)
 {
-  SDL_QueryTexture(texture, NULL, NULL, &dest->w, &dest->h);
   SDL_RenderCopy(app.renderer, texture, NULL, dest);
 }
 
-
 void draw_w_frame(SDL_Texture *texture, SDL_Rect *frame, SDL_Rect *dest)
 {
-
-  SDL_Log("This is the src x: %d", frame->x);
-  SDL_Log("This is the src y: %d", frame->y);
-  SDL_Log("This is the src w: %d", frame->w);
-  SDL_Log("This is the src h: %d", frame->h);
-
-  SDL_Log("This is the dest x: %d", dest->x);
-  SDL_Log("This is the dest y: %d", dest->y);
-  SDL_Log("This is the dest w: %d", dest->w);
-  SDL_Log("This is the dest h: %d", dest->h);
-
-  SDL_QueryTexture(texture, NULL, NULL, &dest->w, &dest->h);
   SDL_RenderCopy(app.renderer, texture, frame, dest);
 }
 
@@ -306,9 +292,6 @@ void draw_player(void)
   frame.y = 0;
   frame.w = app.player->frame_w / 3;
   frame.h = app.player->frame_h;
-
-  SDL_Log("This is the frame offset: %d", app.player->frame_w_offset);
-  SDL_Log("This is the frame time: %f \n", frame_time);
 
   if (FPS / frame_time == 4)
   {
@@ -339,14 +322,14 @@ void draw_bullets(void)
     struct Bullet *bullet = &app.player->bullets[i];
 
     SDL_Rect dest;
-    dest.x = bullet->x + 17;
+    dest.x = bullet->x;
     dest.y = bullet->y;
     dest.w = bullet->w;
     dest.h = bullet->h;
 
     if (bullet->y < SCREEN_HEIGHT)
     {
-      bullet->y -= 5;
+      bullet->y -= 10;
     }
 
     if (bullet->y < 0)
@@ -512,13 +495,13 @@ void do_input(void)
       do_key_up(&e.key);
       break;
 
-      // case SDL_JOYBUTTONDOWN:
-      //   doButtonDown(&e.jbutton);
-      //   break;
+    // case SDL_JOYBUTTONDOWN:
+    //   doButtonDown(&e.jbutton);
+    //   break;
 
-      // case SDL_JOYBUTTONUP:
-      //   doButtonUp(&e.jbutton);
-      //   break;
+    // case SDL_JOYBUTTONUP:
+    //   doButtonUp(&e.jbutton);
+    //   break;
 
     case SDL_CONTROLLERAXISMOTION:
       do_joy_axis(&e.jaxis);
@@ -603,6 +586,7 @@ void draw_text(char text[MAX_STRING_LENGTH], int x, int y)
   rect.w = 100;
   rect.h = 100;
 
+  SDL_QueryTexture(texture, NULL, NULL, &rect.w, &rect.h);
   draw(texture, &rect);
   SDL_FreeSurface(surface);
   SDL_DestroyTexture(texture);
