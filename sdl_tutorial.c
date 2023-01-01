@@ -17,7 +17,7 @@ const int SCREEN_HEIGHT = 800;
 const int MAX_KEYBOARD_KEYS = 350;
 const int MAX_STRING_LENGTH = 100;
 const float FPS = 60;
-float frame_time = 0;
+float FRAME_TIME = 0;
 
 static TTF_Font *font;
 static SDL_Texture *ast_texture;
@@ -121,7 +121,7 @@ void init_player(void)
   SDL_Log("Player initialized\n");
 }
 
-void maybe_gen_ast(void)
+struct Asteroid gen_ast(void)
 {
   struct Asteroid *ast = malloc(sizeof(struct Asteroid));
   ast->y = -10;
@@ -146,6 +146,8 @@ void maybe_gen_ast(void)
     app.asteroids[app.ast_index] = *ast;
     app.ast_index += 1;
   }
+
+  return *ast;
 }
 
 void init_font(void)
@@ -260,7 +262,6 @@ void update_player_pos(struct Player *player)
   }
 }
 
-
 void clear_screen(void)
 {
   SDL_SetRenderDrawColor(app.renderer, 0, 0, 0, 0);
@@ -275,6 +276,15 @@ void draw(SDL_Texture *texture, SDL_Rect *dest)
 void draw_w_frame(SDL_Texture *texture, SDL_Rect *frame, SDL_Rect *dest)
 {
   SDL_RenderCopy(app.renderer, texture, frame, dest);
+}
+
+void draw_hit_box(int x, int y, int w, int h)
+{
+  SDL_SetRenderDrawColor(app.renderer, 255, 0, 0, 255);
+  SDL_RenderDrawLine(app.renderer, x, y, x + w, y);
+  SDL_RenderDrawLine(app.renderer, x, y, x, y + h);
+  SDL_RenderDrawLine(app.renderer, x + w, y, x + w, y + h);
+  SDL_RenderDrawLine(app.renderer, x + w, y + h, x, y + h);
 }
 
 void draw_player(void)
@@ -293,9 +303,9 @@ void draw_player(void)
   frame.w = app.player->frame_w / 3;
   frame.h = app.player->frame_h;
 
-  if (FPS / frame_time == 4)
+  if (FPS / FRAME_TIME == 4)
   {
-    frame_time = 0;
+    FRAME_TIME = 0;
     app.player->frame_w_offset += (int)app.player->frame_w / 3;
   }
 
@@ -304,7 +314,7 @@ void draw_player(void)
     app.player->frame_w_offset = 0;
   }
 
-  frame_time++;
+  FRAME_TIME++;
 
   draw_w_frame(app.player->texture, &frame, &dest);
 }
@@ -336,8 +346,10 @@ void draw_bullets(void)
     {
       struct Bullet bullet;
       app.player->bullets[i] = bullet;
+      app.bullet_index--;
     }
 
+    draw_hit_box(bullet->x, bullet->y, bullet->w, bullet->h);
     draw(bullet->texture, &dest);
   }
 }
@@ -349,7 +361,8 @@ void draw_asteroids(void)
     return;
   }
 
-  for (int i = 0; i < app.ast_index; i++)
+  const int app_ast_index = app.ast_index;
+  for (int i = 0; i < app_ast_index; i++)
   {
     struct Asteroid *ast = &app.asteroids[i];
 
@@ -362,7 +375,7 @@ void draw_asteroids(void)
     if (ast->y <= (SCREEN_HEIGHT + 10))
     {
       ast->y += 1;
-    
+
       if ((rand() / 10000000) % 10 == 0 && !(ast->x < 0))
       {
         ast->x -= 1;
@@ -372,9 +385,15 @@ void draw_asteroids(void)
       {
         ast->x += 1;
       }
-      
     }
 
+    if (ast->y > SCREEN_HEIGHT)
+    {
+      app.asteroids[i] = gen_ast();
+      app.ast_index--;
+    }
+
+    draw_hit_box(ast->x, ast->y, ast->w, ast->h);
     draw(ast->texture, &dest);
   }
 }
@@ -495,13 +514,13 @@ void do_input(void)
       do_key_up(&e.key);
       break;
 
-    // case SDL_JOYBUTTONDOWN:
-    //   doButtonDown(&e.jbutton);
-    //   break;
+      // case SDL_JOYBUTTONDOWN:
+      //   doButtonDown(&e.jbutton);
+      //   break;
 
-    // case SDL_JOYBUTTONUP:
-    //   doButtonUp(&e.jbutton);
-    //   break;
+      // case SDL_JOYBUTTONUP:
+      //   doButtonUp(&e.jbutton);
+      //   break;
 
     case SDL_CONTROLLERAXISMOTION:
       do_joy_axis(&e.jaxis);
@@ -529,7 +548,8 @@ int ply_ast_collision(struct Player *a, struct Asteroid *b)
 
 void detect_collisions()
 {
-  for (int i = 0; i < app.ast_index; i++)
+  const int app_ast_index = app.ast_index;
+  for (int i = 0; i < app_ast_index; i++)
   {
     struct Asteroid *ast = &app.asteroids[i];
     if (ply_ast_collision(app.player, ast))
@@ -542,18 +562,26 @@ void detect_collisions()
       app.collisions++;
       SDL_Log("Player Asteroid Collision Detected: %d \n", app.collisions);
     }
-
+    
     for (int j = 0; j < app.bullet_index; j++)
     {
       struct Bullet *bullet = &app.player->bullets[j];
       if (ast_bull_collision(ast, bullet))
       {
         struct Asteroid newAst;
+        newAst.y = -10;
+        newAst.x = rand() % SCREEN_WIDTH;
+        newAst.h = 64;
+        newAst.w = 64;
+        newAst.texture = ast_texture;
+
         app.asteroids[i] = newAst;
 
         struct Bullet newBullet;
         app.player->bullets[j] = newBullet;
 
+        app.bullet_index--;
+        // app.ast_index--;
         app.collisions++;
         SDL_Log("Bullet Asteroid Collision Detected: %d \n", app.collisions);
       }
@@ -594,9 +622,12 @@ void draw_text(char text[MAX_STRING_LENGTH], int x, int y)
 
 char collision_count[MAX_STRING_LENGTH];
 char player_lives_count[MAX_STRING_LENGTH];
+char bullet_index[MAX_STRING_LENGTH];
+char ast_index[MAX_STRING_LENGTH];
 
 void render(void)
 {
+  draw_hit_box(app.player->x, app.player->y, app.player->w, app.player->h);
   SDL_RenderPresent(app.renderer);
   SDL_Delay(19);
 }
@@ -613,12 +644,16 @@ void game_over_screen(void)
 
 void screen(void)
 {
-  sprintf(collision_count, "collision detected:  %d", app.collisions);
-  sprintf(player_lives_count, "player lives:  %d", app.player_lives);
   do_input();
   clear_screen();
+  sprintf(collision_count, "collision detected:  %d", app.collisions);
+  sprintf(player_lives_count, "player lives:  %d", app.player_lives);
+  sprintf(bullet_index, "Bullets:  %d", app.bullet_index);
+  sprintf(ast_index, "Asteroids: %d", app.ast_index);
   draw_text(collision_count, 100, 100);
   draw_text(player_lives_count, 100, 125);
+  draw_text(bullet_index, 100, 150);
+  draw_text(ast_index, 100, 175);
   draw_bullets();
   draw_player();
   draw_asteroids();
@@ -631,13 +666,13 @@ void do_asteroid(void)
   int rand_number = rand() / 10000;
   if (rand_number % 100 == 2)
   {
-    maybe_gen_ast();
+    gen_ast();
   }
 }
 
-void loop()
+void loop(void)
 {
-  for (;;)
+  while (true)
   {
     do_asteroid();
     if (app.player_lives == 0)
