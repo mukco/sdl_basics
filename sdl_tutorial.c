@@ -61,7 +61,6 @@ typedef struct
   int down;
   int left;
   int right;
-  int fire;
   int ast_index;
   int collisions;
   int bullet_index;
